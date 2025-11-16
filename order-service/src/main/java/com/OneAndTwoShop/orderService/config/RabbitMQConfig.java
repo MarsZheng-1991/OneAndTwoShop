@@ -1,0 +1,136 @@
+package com.OneAndTwoShop.orderService.config;
+
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * RabbitMQ 設定：
+ * - 使用 Topic Exchange（主題交換機）
+ * - 用於訂單相關事件通知，例如「訂單建立」
+ */
+@Configuration
+public class RabbitMQConfig {
+
+    public static final String ORDER_EXCHANGE = "order.exchange";
+    public static final String ORDER_CREATED_QUEUE = "order.created.queue";
+    public static final String ORDER_CREATED_ROUTING_KEY = "order.created";
+
+    // 延遲重試（10s）
+    public static final String ORDER_RETRY_EXCHANGE = "order.retry.exchange";
+    public static final String ORDER_RETRY_QUEUE_10S = "order.retry.10s.queue";
+    public static final String ORDER_RETRY_ROUTING_KEY_10S = "order.retry.10s";
+
+    // DLQ
+    public static final String ORDER_DEAD_EXCHANGE = "order.dead.exchange";
+    public static final String ORDER_DEAD_QUEUE = "order.dead.queue";
+    public static final String ORDER_DEAD_ROUTING_KEY = "order.dead";
+
+    public static final String ORDER_ROUTING_KEY = "order.created";
+
+    // ============================
+    // 1. JSON Converter
+    // ============================
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    // ============================
+    // 2. Publisher (RabbitTemplate)
+    // ============================
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(jsonMessageConverter());
+        return template;
+    }
+
+    // ============================
+    // 3. Consumer Listener Factory
+    // ============================
+    @Bean(name = "manualAckListenerContainerFactory")
+    public SimpleRabbitListenerContainerFactory manualAckListenerContainerFactory(
+            ConnectionFactory connectionFactory
+    ) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setPrefetchCount(1);
+        factory.setMessageConverter(jsonMessageConverter());
+        return factory;
+    }
+
+
+    // ============================
+    // Exchange
+    // ============================
+    @Bean
+    DirectExchange orderExchange() {
+        return new DirectExchange(ORDER_EXCHANGE);
+    }
+
+    @Bean
+    DirectExchange retryExchange() {
+        return new DirectExchange(ORDER_RETRY_EXCHANGE);
+    }
+
+    @Bean
+    DirectExchange deadExchange() {
+        return new DirectExchange(ORDER_DEAD_EXCHANGE);
+    }
+
+    // ============================
+    // Queue
+    // ============================
+    @Bean
+    Queue orderQueue() {
+        return QueueBuilder.durable(ORDER_CREATED_QUEUE)
+                .withArgument("x-dead-letter-exchange", ORDER_RETRY_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", ORDER_RETRY_ROUTING_KEY_10S)
+                .build();
+    }
+
+    @Bean
+    Queue retry10sQueue() {
+        return QueueBuilder.durable(ORDER_RETRY_QUEUE_10S)
+                .withArgument("x-message-ttl", 10000)
+                .withArgument("x-dead-letter-exchange", ORDER_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", ORDER_CREATED_ROUTING_KEY)
+                .build();
+    }
+
+    @Bean
+    Queue deadQueue() {
+        return QueueBuilder.durable(ORDER_DEAD_QUEUE).build();
+    }
+
+    // ============================
+    // Binding
+    // ============================
+    @Bean
+    Binding orderBinding() {
+        return BindingBuilder.bind(orderQueue())
+                .to(orderExchange())
+                .with(ORDER_CREATED_ROUTING_KEY);
+    }
+
+    @Bean
+    Binding retry10sBinding() {
+        return BindingBuilder.bind(retry10sQueue())
+                .to(retryExchange())
+                .with(ORDER_RETRY_ROUTING_KEY_10S);
+    }
+
+    @Bean
+    Binding deadBinding() {
+        return BindingBuilder.bind(deadQueue())
+                .to(deadExchange())
+                .with(ORDER_DEAD_ROUTING_KEY);
+    }
+}

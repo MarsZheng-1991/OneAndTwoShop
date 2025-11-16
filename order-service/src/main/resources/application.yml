@@ -1,0 +1,12 @@
+spring:
+  config:
+    import: optional:classpath:application-common.yml
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: guest
+    password: guest
+
+server:
+  port: 8080
