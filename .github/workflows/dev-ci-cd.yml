@@ -1,5 +1,7 @@
 name: OneAndTwoShop Dev CI/CD
-
+permissions:
+  contents: write
+  packages: write
 on:
   push:
     branches: [ "dev" ]
