@@ -1,0 +1,86 @@
+name: OneAndTwoShop Dev CI
+
+# ===============================================================
+# 📌 DEV CI（非部署）
+# 這支工作流負責「開發階段的自動化建置與品質檢查」
+#
+# 用途：
+# 1. 開發者上傳程式碼後，立即執行自動化建置（CI）
+# 2. 在 Code Review 之前先驗證程式碼可否正常 Build
+# 3. 測試 Multi-module Maven、Docker build 是否正常
+# 4. 只上傳 Dev 版本 Docker Image（方便日後 Dev 環境部署）
+#
+# ❗這裡不做部署（非 CD）
+# ===============================================================
+
+on:
+  push:
+    branches: [ "dev" ]   # 🔥 只有 dev 分支的推送會觸發 CI
+  pull_request:
+    branches: [ "dev" ]   # 🔥 PR 到 dev 時會執行 CI（方便 Code Review）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -----------------------------------------------------------
+      # 1️⃣ Checkout 原始碼，供後續建置使用
+      # -----------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------
+      # 2️⃣ 安裝 Java 17：Spring Boot + Maven 必備環境
+      # -----------------------------------------------------------
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # -----------------------------------------------------------
+      # 3️⃣ Maven Build（跳過測試）
+      # 目的：
+      # - 確認程式碼能正常 Build
+      # - 驗證 multi-module 依賴是否正常
+      #
+      # Code Review 之前最關鍵的 CI 步驟
+      # -----------------------------------------------------------
+      - name: Build with Maven
+        run: mvn -q -B -DskipTests clean package
+
+      # -----------------------------------------------------------
+      # 4️⃣ 登入 GitHub Container Registry（GHCR）
+      # 用途：
+      # - 將 Dev 版 Docker image 上傳（可供未來 Dev 環境部署）
+      # -----------------------------------------------------------
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------
+      # 5️⃣ Build Dev 版本 Docker Images
+      # 此步驟用於驗證 Docker 是否能成功打包
+      # 並產生 :dev tag，供日後 Dev 伺服器手動或自動部署使用
+      # -----------------------------------------------------------
+      - name: Build Docker images
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/oneshop-user:dev --target user .
+          docker build -t ghcr.io/${{ github.repository_owner }}/oneshop-product:dev --target product .
+          docker build -t ghcr.io/${{ github.repository_owner }}/oneshop-order:dev --target order .
+
+      # -----------------------------------------------------------
+      # 6️⃣ 將 Dev 版 Images 推上 GHCR（非部署）
+      # 目的：
+      # - 提供 Dev 環境後續部署可使用的最新 Image
+      # -----------------------------------------------------------
+      - name: Push Docker images
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/oneshop-user:dev
+          docker push ghcr.io/${{ github.repository_owner }}/oneshop-product:dev
+          docker push ghcr.io/${{ github.repository_owner }}/oneshop-order:dev
