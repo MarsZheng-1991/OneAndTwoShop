@@ -1,9 +1,12 @@
 package com.OneAndTwoShop.commonLib.common.error;
 
+import lombok.Getter;
+
 /**
  * 很簡單的業務例外類別。
  * 只保存一個 errorCode，之後用來查 i18n 訊息。
  */
+@Getter
 public class BusinessException extends RuntimeException {
 
     private final String key;
@@ -11,9 +14,5 @@ public class BusinessException extends RuntimeException {
     public BusinessException(String key) {
         super(key);
         this.key = key;
-    }
-
-    public String getKey() {
-        return key;
     }
 }

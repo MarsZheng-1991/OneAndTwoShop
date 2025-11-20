@@ -1,46 +1,87 @@
 package com.OneAndTwoShop.productService.service;
 
-import com.OneAndTwoShop.productService.dto.ProductResponse;
+import com.OneAndTwoShop.commonLib.common.error.BusinessException;
+import com.OneAndTwoShop.commonLib.common.i18n.ErrorMessageService;
+import com.OneAndTwoShop.commonLib.response.ApiData;
+import com.OneAndTwoShop.productService.dto.ProductQueryRequest;
 import com.OneAndTwoShop.productService.model.Product;
 import com.OneAndTwoShop.productService.repository.ProductRepository;
+import com.OneAndTwoShop.productService.spec.ProductSpecification;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.time.Duration;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class ProductService {
 
-    private final ProductRepository productRepository;
-    private final StringRedisTemplate redis;
+    private final ProductRepository repository;
+    private final ErrorMessageService errorMessageService;
 
-    private static final String PRODUCT_CACHE_PREFIX = "product:";
+    public Mono<ApiData<Product>> create(Product product, String locale) {
+        return Mono.fromCallable(() -> {
+            if (repository.findByProductCode(product.getProductCode()).isPresent()) {
+                throw new BusinessException("product.duplicate_code");
+            }
 
-    public ProductResponse getProductByCode(String code) {
-        String cacheKey = PRODUCT_CACHE_PREFIX + code;
+            Product saved = repository.save(product);
+            String message = errorMessageService.translate("product.created", locale);
+            return new ApiData<>(message, saved);
 
-        // 1️⃣ 查快取
-        String cached = redis.opsForValue().get(cacheKey);
-        if (cached != null) {
-            log.info("🎯 Redis cache hit for product {}", code);
-            return ProductResponse.fromCacheString(cached);
-        }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
 
-        // 2️⃣ 查 DB
-        Product product = productRepository.findByProductCode(code)
-                .orElseThrow(() -> new RuntimeException("product.not.found"));
+    public Mono<ApiData<Product>> update(Long id, Product req, String locale) {
+        return Mono.fromCallable(() -> {
+            Product db = repository.findById(id)
+                    .orElseThrow(() -> new BusinessException("product.notfound"));
 
-        // 3️⃣ 寫入快取
-        String cacheValue = product.getName() + "|" + product.getPrice();
-        redis.opsForValue().set(cacheKey, cacheValue, Duration.ofMinutes(10));
+            db.setName(req.getName());
+            db.setPrice(req.getPrice());
+            db.setStock(req.getStock());
+            db.setCategory(req.getCategory());
+            db.setStatus(req.getStatus());
 
-        log.info("💾 Redis cache miss → load product {} into cache", code);
+            Product updated = repository.save(db);
+            String message = errorMessageService.translate("product.updated", locale);
+            return new ApiData<>(message, updated);
 
-        return new ProductResponse(product.getProductCode(), product.getName(), product.getPrice());
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public Mono<ApiData<Object>> delete(Long id, String locale) {
+        return Mono.fromCallable(() -> {
+            Product db = repository.findById(id)
+                    .orElseThrow(() -> new BusinessException("product.notfound"));
+
+            repository.delete(db);
+
+            String message = errorMessageService.translate("product.deleted", locale);
+            return new ApiData<Object>(message, null);
+
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public Mono<ApiData<Product>> getById(Long id, String locale) {
+        return Mono.fromCallable(() -> {
+            Product db = repository.findById(id)
+                    .orElseThrow(() -> new BusinessException("product.notfound"));
+
+            String message = errorMessageService.translate("product.query.success", locale);
+            return new ApiData<>(message, db);
+
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public Mono<ApiData<Page<Product>>> search(ProductQueryRequest req, Pageable pageable, String locale) {
+        return Mono.fromCallable(() -> {
+            Page<Product> page = repository.findAll(ProductSpecification.filter(req), pageable);
+            String message = errorMessageService.translate("product.list.success", locale);
+            return new ApiData<>(message, page);
+
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 }

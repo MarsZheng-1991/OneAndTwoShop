@@ -3,9 +3,11 @@ package com.OneAndTwoShop.commonLib.common.i18n;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.Data;
 
 @Entity
 @Table(name = "error_message")
+@Data
 public class ErrorMessage {
 
     @Id
@@ -13,8 +15,4 @@ public class ErrorMessage {
 
     private String zh;
     private String en;
-
-    public String getKey() { return key; }
-    public String getZh() { return zh; }
-    public String getEn() { return en; }
 }

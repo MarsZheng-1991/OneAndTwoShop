@@ -1,56 +1,59 @@
 package com.OneAndTwoShop.commonLib.exception;
 
 import com.OneAndTwoShop.commonLib.common.error.BusinessException;
+import com.OneAndTwoShop.commonLib.common.i18n.ErrorMessageService;
+import com.OneAndTwoShop.commonLib.response.ApiData;
 import com.OneAndTwoShop.commonLib.response.ApiResponse;
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.OneAndTwoShop.commonLib.common.i18n.TranslateService;
-import lombok.RequiredArgsConstructor;
-
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Locale;
 
 @RestControllerAdvice
 @RequiredArgsConstructor
-@Slf4j
 public class GlobalExceptionHandler {
 
-    private final TranslateService translateService;
+    private final ErrorMessageService errorMessageService;
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<String>> handleBusinessException(
+    public ResponseEntity<ApiResponse<ApiData<Object>>> handleBusinessException(
             BusinessException ex,
-            HttpServletRequest request) {
+            HttpServletRequest request
+    ) {
+        String locale = getLocaleFromRequest(request);
+        String message = errorMessageService.translate(ex.getKey(), locale);
 
-        Locale locale = getLocale(request);
-        String message = translateService.translate(ex.getKey(), locale);
+        ApiData<Object> apiData = new ApiData<>(message, null);
+        ApiResponse<ApiData<Object>> body =
+                new ApiResponse<>(HttpStatus.BAD_REQUEST.value(), apiData);
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>(400, message));
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<String>> handleOtherException(
+    public ResponseEntity<ApiResponse<ApiData<Object>>> handleException(
             Exception ex,
-            HttpServletRequest request) {
+            HttpServletRequest request
+    ) {
+        String locale = getLocaleFromRequest(request);
+        String message = errorMessageService.translate("system.error", locale);
 
-        log.error("[Unhandled Exception]", ex);
+        ApiData<Object> apiData = new ApiData<>(message, null);
+        ApiResponse<ApiData<Object>> body =
+                new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), apiData);
 
-        Locale locale = getLocale(request);
-        String message = translateService.translate("system.error", locale);
-
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(500, message));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
-    private Locale getLocale(HttpServletRequest request) {
-        String lang = request.getHeader("Accept-Language");
-        return (lang != null) ? Locale.forLanguageTag(lang) : Locale.TAIWAN;
+    private String getLocaleFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Accept-Language");
+        if (header == null || header.isBlank()) {
+            return "zh"; // 預設
+        }
+        // 只取前面兩碼 "zh-TW" -> "zh"
+        return header.split(",")[0].trim();
     }
 }

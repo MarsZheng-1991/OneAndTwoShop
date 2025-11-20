@@ -1,6 +1,7 @@
 package com.OneAndTwoShop.userService.service;
 
 import com.OneAndTwoShop.commonLib.common.error.BusinessException;
+import com.OneAndTwoShop.commonLib.common.i18n.ErrorMessageService;
 import com.OneAndTwoShop.commonLib.response.ApiData;
 import com.OneAndTwoShop.userService.model.User;
 import com.OneAndTwoShop.userService.repository.UserRepository;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 
@@ -17,54 +19,72 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ErrorMessageService errorMessageService;
 
     // 取得所有使用者
-    public Mono<ApiData<List<User>>> getAllUsers() {
-        return Mono.fromCallable(userRepository::findAll)
-                .map(ApiData::success)
-                .onErrorResume(this::handleError);
+    public Mono<ApiData<List<User>>> getAllUsers(String locale) {
+        return Mono.fromCallable(() -> {
+
+            List<User> list = userRepository.findAll();
+            String message = errorMessageService.translate("user.list.success", locale);
+
+            return new ApiData<>(message, list);
+
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    // 查詢 ID
-    public Mono<ApiData<User>> getUserById(Long id) {
-        return Mono.fromCallable(() ->
-                        userRepository.findById(id)
-                                .orElseThrow(() -> new BusinessException("user.notfound"))
-                ).map(ApiData::success)
-                .onErrorResume(this::handleError);
+    // 查詢單筆
+    public Mono<ApiData<User>> getUserById(Long id, String locale) {
+        return Mono.fromCallable(() -> {
+
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new BusinessException("user.notfound"));
+
+            String message = errorMessageService.translate("user.query.success", locale);
+
+            return new ApiData<>(message, user);
+
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     // 建立使用者
-    public Mono<ApiData<String>> createUser(User user) {
+    public Mono<ApiData<Object>> createUser(User user, String locale) {
         return Mono.fromCallable(() -> {
+
             userRepository.save(user);
-            return ApiData.successMessage("system.success");
-        }).onErrorResume(this::handleError);
+
+            String message = errorMessageService.translate("user.created", locale);
+
+            return new ApiData<>(message, null);
+
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     // 更新使用者
-    public Mono<ApiData<String>> updateUser(Long id, User user) {
+    public Mono<ApiData<Object>> updateUser(Long id, User req, String locale) {
         return Mono.fromCallable(() -> {
 
             User existing = userRepository.findById(id)
                     .orElseThrow(() -> new BusinessException("user.notfound"));
 
-            existing.setUsername(user.getUsername());
-            existing.setEmail(user.getEmail());
-            existing.setAddress(user.getAddress());
-            existing.setBirthday(user.getBirthday());
-            existing.setChildBirthday(user.getChildBirthday());
-            existing.setGender(user.getGender());
+            existing.setUsername(req.getUsername());
+            existing.setEmail(req.getEmail());
+            existing.setAddress(req.getAddress());
+            existing.setBirthday(req.getBirthday());
+            existing.setChildBirthday(req.getChildBirthday());
+            existing.setGender(req.getGender());
 
             userRepository.save(existing);
 
-            return ApiData.successMessage("system.success");
+            String message = errorMessageService.translate("user.updated", locale);
 
-        }).onErrorResume(this::handleError);
+            return new ApiData<>(message, null);
+
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    // 刪除使用者
-    public Mono<ApiData<String>> deleteUser(Long id) {
+    // 刪除
+    public Mono<ApiData<Object>> deleteUser(Long id, String locale) {
         return Mono.fromCallable(() -> {
 
             if (!userRepository.existsById(id)) {
@@ -72,22 +92,11 @@ public class UserService {
             }
 
             userRepository.deleteById(id);
-            return ApiData.successMessage("system.success");
 
-        }).onErrorResume(this::handleError);
-    }
+            String message = errorMessageService.translate("user.deleted", locale);
 
-    // -----------------------------------------------------------
-    // 統一錯誤處理
-    // -----------------------------------------------------------
-    private <T> Mono<T> handleError(Throwable ex) {
+            return new ApiData<>(message, null);
 
-        if (ex instanceof BusinessException) {
-            return Mono.error(ex);
-        }
-
-        log.error("[UserService Unknown Error]", ex);
-
-        return Mono.error(new BusinessException("system.error"));
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 }
