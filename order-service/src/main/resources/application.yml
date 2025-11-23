@@ -3,8 +3,8 @@ spring:
     import: optional:classpath:application-common.yml
 #DOCKER可以執行的方式
   rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: ${SPRING_RABBITMQ_PORT}
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
     username: guest
     password: guest
 
