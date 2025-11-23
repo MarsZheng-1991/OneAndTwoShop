@@ -1,46 +1,65 @@
 package com.OneAndTwoShop.orderService.controller;
 
-import com.OneAndTwoShop.orderService.dto.OrderDto;
-import com.OneAndTwoShop.orderService.message.publisher.OrderMessagePublisher;
-import com.OneAndTwoShop.orderService.model.Order;
+import com.OneAndTwoShop.commonLib.response.ApiData;
+import com.OneAndTwoShop.commonLib.response.ApiResponse;
+import com.OneAndTwoShop.orderService.dto.OrderCreateRequest;
+import com.OneAndTwoShop.orderService.dto.OrderDetailResponse;
+import com.OneAndTwoShop.orderService.dto.OrderSummaryResponse;
 import com.OneAndTwoShop.orderService.service.OrderService;
-import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Mono;
-
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/orders")
-@Slf4j
+@RequiredArgsConstructor
 public class OrderController {
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
 
-    @Autowired
-    private OrderMessagePublisher orderMessagePublisher;
-
+    // 建立訂單（支援單項 / 多項商品）
     @PostMapping
-    public Mono<ResponseEntity<String>> createOrder(@Valid @RequestBody OrderDto dto) {
-        return orderService.createOrder(dto)
-                .map(order -> ResponseEntity.ok("Order created"))
-                .onErrorResume(e -> {
-                    log.error("Order creation failed: {}", e.getMessage());
-                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body("訂單建立失敗：" + e.getMessage()));
-                });
+    public ResponseEntity<ApiResponse<ApiData<OrderDetailResponse>>> createOrder(
+            @RequestBody OrderCreateRequest req,
+            @RequestHeader(value = "Accept-Language", defaultValue = "zh") String locale) {
+
+        ApiData<OrderDetailResponse> result = orderService.createOrder(req, locale).block();
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), result));
     }
 
-    @PostMapping("/test/mq")
-    public ResponseEntity<String> testMq(@RequestBody Order order) {
-        orderMessagePublisher.publishOrderCreated(order);
-        return ResponseEntity.ok("📤 訂單訊息已送出到 MQ！");
+    // 查詢單筆訂單（含明細）
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ApiData<OrderDetailResponse>>> getOrder(
+            @PathVariable Long id,
+            @RequestHeader(value = "Accept-Language", defaultValue = "zh") String locale) {
+
+        ApiData<OrderDetailResponse> result = orderService.getOrderById(id, locale).block();
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), result));
+    }
+
+    // 查詢訂單列表（分頁）
+    @GetMapping
+    public ResponseEntity<ApiResponse<ApiData<Page<OrderSummaryResponse>>>> listOrders(
+            @RequestParam int page,
+            @RequestParam int size,
+            @RequestHeader(value = "Accept-Language", defaultValue = "zh") String locale) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        ApiData<Page<OrderSummaryResponse>> result = orderService.listOrders(pageable, locale).block();
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), result));
+    }
+
+    // 刪除 / 取消訂單
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<ApiData<Object>>> deleteOrder(
+            @PathVariable Long id,
+            @RequestHeader(value = "Accept-Language", defaultValue = "zh") String locale) {
+
+        ApiData<Object> result = orderService.deleteOrder(id, locale).block();
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), result));
     }
 }

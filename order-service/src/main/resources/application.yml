@@ -1,12 +1,33 @@
 spring:
   config:
     import: optional:classpath:application-common.yml
-
+#DOCKER可以執行的方式
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST}
     port: ${SPRING_RABBITMQ_PORT}
     username: guest
     password: guest
 
+#本地可以執行的方式
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
+
 server:
   port: 8080
+
+# 依你的 Docker Compose 服務名稱調整
+oneshop:
+  user-service:
+    base-url: http://user-service:8080
+  product-service:
+    base-url: http://product-service:8080/api/products
+
+#本地測試
+#oneshop:
+#  user-service:
+#    base-url: http://localhost:8091
+#  product-service:
+#    base-url: http://localhost:8092/api/products

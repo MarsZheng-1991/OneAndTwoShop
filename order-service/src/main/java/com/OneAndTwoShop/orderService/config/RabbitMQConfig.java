@@ -33,6 +33,14 @@ public class RabbitMQConfig {
 
     public static final String ORDER_ROUTING_KEY = "order.created";
 
+    public static final String EXCHANGE = "oneshop.order.exchange";
+
+    public static final String QUEUE_STOCK_RESERVE_REQUEST = "order.stock.reserve.request.queue";
+    public static final String QUEUE_STOCK_RESERVE_RESULT = "order.stock.reserve.result.queue";
+
+    public static final String RK_STOCK_RESERVE_REQUEST = "order.stock.reserve.request";
+    public static final String RK_STOCK_RESERVE_RESULT = "order.stock.reserve.result";
+
     // ============================
     // 1. JSON Converter
     // ============================
@@ -71,8 +79,8 @@ public class RabbitMQConfig {
     // Exchange
     // ============================
     @Bean
-    DirectExchange orderExchange() {
-        return new DirectExchange(ORDER_EXCHANGE);
+    public TopicExchange orderExchange() {
+        return ExchangeBuilder.topicExchange(EXCHANGE).durable(true).build();
     }
 
     @Bean
@@ -132,5 +140,44 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(deadQueue())
                 .to(deadExchange())
                 .with(ORDER_DEAD_ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue orderStockDecreaseQueue() {
+        return new Queue("order.stock.decrease", true);
+    }
+
+    @Bean
+    public Queue stockDecreaseSuccessQueue() {
+        return new Queue("stock.decrease.success", true);
+    }
+
+    @Bean
+    public Queue stockDecreaseFailQueue() {
+        return new Queue("stock.decrease.fail", true);
+    }
+
+    @Bean
+    public Queue stockReserveRequestQueue() {
+        return QueueBuilder.durable(QUEUE_STOCK_RESERVE_REQUEST).build();
+    }
+
+    @Bean
+    public Queue stockReserveResultQueue() {
+        return QueueBuilder.durable(QUEUE_STOCK_RESERVE_RESULT).build();
+    }
+
+    @Bean
+    public Binding stockReserveRequestBinding() {
+        return BindingBuilder.bind(stockReserveRequestQueue())
+                .to(orderExchange())
+                .with(RK_STOCK_RESERVE_REQUEST);
+    }
+
+    @Bean
+    public Binding stockReserveResultBinding() {
+        return BindingBuilder.bind(stockReserveResultQueue())
+                .to(orderExchange())
+                .with(RK_STOCK_RESERVE_RESULT);
     }
 }
