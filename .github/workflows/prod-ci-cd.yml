@@ -1,7 +1,9 @@
 name: OneAndTwoShop Prod CI/CD
+
 permissions:
   contents: write
   packages: write
+
 on:
   push:
     branches: [ "main" ]
@@ -11,18 +13,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ----------------------------
+      # 1. Checkout Full Repository
+      # ----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # ⭐ 必須：完整 clone 確保 multi-module 正常
+          submodules: recursive   # ⭐ 保險：若未來有 submodule 也能完整下載
 
+      # ----------------------------
+      # 2. Setup Java 17
+      # ----------------------------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # ----------------------------
+      # 3. Build with Maven
+      # ----------------------------
       - name: Build with Maven
-        run: mvn -q -B -DskipTests clean package
+        run: mvn -e -X -B -DskipTests clean package
+        # ⭐ -e -X 可讓任何錯誤 fail，不可能再偷產生空 JAR
 
+      # ----------------------------
+      # 4. Login to GHCR
+      # ----------------------------
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -30,12 +48,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------
+      # 5. Build Docker images (multi-stage)
+      # ----------------------------
       - name: Build Docker images
         run: |
           docker build -t ghcr.io/marszheng-1991/oneshop-user:latest --target user .
           docker build -t ghcr.io/marszheng-1991/oneshop-product:latest --target product .
           docker build -t ghcr.io/marszheng-1991/oneshop-order:latest --target order .
 
+      # ----------------------------
+      # 6. Push Docker images
+      # ----------------------------
       - name: Push Docker images
         run: |
           docker push ghcr.io/marszheng-1991/oneshop-user:latest
