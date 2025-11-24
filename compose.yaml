@@ -16,31 +16,24 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
 
-#  rabbitmq:
-#    image: rabbitmq:3-management
-#    ports:
-#      - "5672:5672"
-#      - "15672:15672"
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
 
   user-service:
-    build:
-      context: .
-      target: user
+    image: ghcr.io/marszheng-1991/oneshop-user:latest
     ports:
       - "8081:8080"
     environment:
@@ -59,9 +52,7 @@ services:
         condition: service_healthy
 
   product-service:
-    build:
-      context: .
-      target: product
+    image: ghcr.io/marszheng-1991/oneshop-product:latest
     ports:
       - "8082:8080"
     environment:
@@ -80,9 +71,7 @@ services:
         condition: service_healthy
 
   order-service:
-    build:
-      context: .
-      target: order
+    image: ghcr.io/marszheng-1991/oneshop-order:latest
     ports:
       - "8083:8080"
     environment:
