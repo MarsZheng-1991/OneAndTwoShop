@@ -30,3 +30,26 @@
 #level:
 #root: INFO
 #com.oneandtwoshop: DEBUG
+spring:
+  config:
+    import: optional:classpath:application-common.yml
+
+  redis:
+    host: ${SPRING_DATA_REDIS_HOST:redis}
+    port: ${SPRING_DATA_REDIS_PORT:6379}
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: guest
+    password: guest
+
+server:
+  port: 8080
+  address: 0.0.0.0
+
+oneshop:
+  user-service:
+    base-url: http://user-service:8080
+  product-service:
+    base-url: http://product-service:8080/api/products
