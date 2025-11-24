@@ -1,6 +1,6 @@
 spring:
   config:
-    import: optional:classpath:application-common.yml
+    import: optional:classpath*:application-common.yml
 
   redis:
     host: ${SPRING_DATA_REDIS_HOST:redis}
