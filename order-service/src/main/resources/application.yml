@@ -2,9 +2,12 @@ spring:
   config:
     import: optional:classpath:application-common.yml
 
-  redis:
-    host: redis
-    port: 6379
+  # ⭐ 如果你想在 order-service 額外覆蓋 Redis 設定，可以保留這段；
+  #   如果不需要特別分開，也可以直接刪掉這整個 spring.data.redis 區塊，交給 application-common.yml 管理。
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:rabbitmq}
