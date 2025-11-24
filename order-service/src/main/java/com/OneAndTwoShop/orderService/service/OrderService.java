@@ -14,9 +14,7 @@ import com.OneAndTwoShop.orderService.model.Order;
 import com.OneAndTwoShop.orderService.model.OrderItem;
 import com.OneAndTwoShop.orderService.repository.OrderItemRepository;
 import com.OneAndTwoShop.orderService.repository.OrderRepository;
-import com.OneAndTwoShop.orderService.util.OrderNumberGenerator;
 import com.OneAndTwoShop.orderService.util.OrderNumberGeneratorRedis;
-import com.OneAndTwoShop.orderService.util.RedisOrderNumberGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,13 +40,9 @@ public class OrderService {
 
     private final ErrorMessageService errorMessageService;
 
-    private final OrderNumberGenerator orderNumberGenerator;
-
     private final OrderStockReservePublisher stockPublisher;
 
     private final UserVerificationService userVerificationService;
-
-    private final RedisOrderNumberGenerator redisOrderNumberGenerator;
 
     private final OrderNumberGeneratorRedis orderNumberGeneratorRedis;
 
