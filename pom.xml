@@ -4,12 +4,12 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 🚀 ★★★ 最重要：啟用 Spring Boot parent ★★★ -->
+    <!-- 整個專案的「總 parent」 -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.2.5</version>
-        <relativePath/>
+        <relativePath/> <!-- 固定寫這行就好 -->
     </parent>
 
     <groupId>com.oneandtwoshop</groupId>
@@ -23,9 +23,27 @@
         <module>product-service</module>
         <module>order-service</module>
         <module>notification-service</module>
+        <module>gateway-service</module>
     </modules>
 
     <properties>
         <java.version>17</java.version>
+        <!-- Spring Cloud 版本 -->
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <!-- 共用 Lombok 版本 -->
+        <lombok.version>1.18.34</lombok.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Cloud for Boot 3.2.x -> 2023.0.x -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version> <!-- 或最新的 2023.0.x，不要用 2024.0.x -->
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>

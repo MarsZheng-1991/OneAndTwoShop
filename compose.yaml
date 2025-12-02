@@ -99,6 +99,22 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: Dockerfile # 或另外一個 Dockerfile，照你現在怎麼拆
+    container_name: gateway-service
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    # 如果用 image:
+    # image: ghcr.io/你的帳號/oneshop-gateway:latest
 volumes:
   redis-data:   # ⭐ Redis Volume 定義
   # ⚠ 先移除 gateway-service（因為你沒有這個目錄）
