@@ -11,6 +11,7 @@ COPY user-service ./user-service
 COPY product-service ./product-service
 COPY order-service ./order-service
 COPY notification-service ./notification-service
+COPY gateway-service ./gateway-service
 
 # Build all microservices (common-lib first)
 RUN mvn -q -e -B -DskipTests clean package
@@ -37,4 +38,12 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:17-jre-jammy AS user
 WORKDIR /app
 COPY --from=builder /app/user-service/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# =========================================
+# 5. Runtime Image for gateway-service
+# =========================================
+FROM eclipse-temurin:17-jre-jammy AS gateway
+WORKDIR /app
+COPY --from=builder /app/gateway-service/target/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]

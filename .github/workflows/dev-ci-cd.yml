@@ -1,4 +1,5 @@
 name: OneAndTwoShop Dev CI/CD
+
 permissions:
   contents: write
   packages: write
@@ -39,9 +40,11 @@ jobs:
           docker build -t ghcr.io/marszheng-1991/oneshop-user:dev --target user .
           docker build -t ghcr.io/marszheng-1991/oneshop-product:dev --target product .
           docker build -t ghcr.io/marszheng-1991/oneshop-order:dev --target order .
+          docker build -t ghcr.io/marszheng-1991/oneshop-gateway:dev --target gateway .
 
       - name: Push Docker images
         run: |
           docker push ghcr.io/marszheng-1991/oneshop-user:dev
           docker push ghcr.io/marszheng-1991/oneshop-product:dev
           docker push ghcr.io/marszheng-1991/oneshop-order:dev
+          docker push ghcr.io/marszheng-1991/oneshop-gateway:dev
